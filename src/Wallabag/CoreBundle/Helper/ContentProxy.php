@@ -56,7 +56,7 @@ class ContentProxy
         if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url) && (!$entry->getUser()->getConfig() || $entry->getUser()->getConfig()->isXGrabberEnabled())) {
             $config = $entry->getUser()->getConfig();
             $content = $this->xPostExtractor->extract($url, $config && $config->isXArticleReaderEnabled());
-            if (502 === $content['status'] && $entry->getContent()) {
+            if ((502 === $content['status'] || !empty($content['reader_failed'])) && $entry->getContent()) {
                 $entry->setHttpStatus(502);
 
                 return;
