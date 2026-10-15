@@ -3,11 +3,11 @@
 namespace Tests\Wallabag\ApiBundle\Controller;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Tests\Wallabag\ApiBundle\WallabagApiTestCase;
+use Tests\Wallabag\ApiBundle\RssApiTestCase;
 use Wallabag\CoreBundle\Entity\RssFeed;
 use Wallabag\UserBundle\Entity\User;
 
-class RssRestControllerTest extends WallabagApiTestCase
+class RssRestControllerTest extends RssApiTestCase
 {
     public function testFeedLifecycleAndPrivateUrlRejection(): void
     {
@@ -31,7 +31,8 @@ class RssRestControllerTest extends WallabagApiTestCase
         $em = $this->client->getContainer()->get(EntityManagerInterface::class);
         $other = $em->getRepository(User::class)->findOneByUsername('bob');
         $feed = new RssFeed($other, 'https://1.1.1.1/private');
-        $em->persist($feed); $em->flush();
+        $em->persist($feed);
+        $em->flush();
         foreach (['GET', 'PATCH', 'DELETE'] as $method) {
             $this->client->request($method, '/api/rss/feeds/' . $feed->id . '.json', [], [], ['CONTENT_TYPE' => 'application/json'], '{"enabled":false}');
             self::assertSame(404, $this->client->getResponse()->getStatusCode());

@@ -17,7 +17,6 @@ use Wallabag\CoreBundle\Tools\Utils;
  */
 class ContentProxy
 {
-    private $xPostExtractor;
     protected $graby;
     protected $tagger;
     protected $ignoreOriginProcessor;
@@ -27,6 +26,7 @@ class ContentProxy
     protected $fetchingErrorMessage;
     protected $eventDispatcher;
     protected $storeArticleHeaders;
+    private $xPostExtractor;
 
     public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false, ?XPostExtractor $xPostExtractor = null)
     {
@@ -52,9 +52,11 @@ class ContentProxy
     public function updateEntry(Entry $entry, $url, array $content = [], $disableContentUpdate = false)
     {
         if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url)) {
-            $content = $this->xPostExtractor->extract($url);
+            $config = $entry->getUser()->getConfig();
+            $content = $this->xPostExtractor->extract($url, $config && $config->isXArticleReaderEnabled());
             if (502 === $content['status'] && $entry->getContent()) {
                 $entry->setHttpStatus(502);
+
                 return;
             }
         }

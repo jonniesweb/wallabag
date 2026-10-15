@@ -47,8 +47,8 @@ class RssFeed
     {
         return ['id' => $this->id, 'url' => $this->url, 'name' => $this->name, 'tags' => $this->tags,
             'max_items' => $this->maxItems, 'enabled' => $this->enabled,
-            'last_fetch_at' => $this->lastFetchAt ? $this->lastFetchAt->format(DATE_ATOM) : null,
-            'next_fetch_at' => $this->nextFetchAt ? $this->nextFetchAt->format(DATE_ATOM) : null,
-            'last_error' => $this->lastError, 'imported_count' => $this->importedCount];
+            'last_fetch_at' => $this->lastFetchAt ? $this->lastFetchAt->format(\DATE_ATOM) : null,
+            'next_fetch_at' => $this->nextFetchAt ? $this->nextFetchAt->format(\DATE_ATOM) : null,
+            'last_error' => $this->lastError, 'imported_count' => $this->importedCount, ];
     }
 }

@@ -2,10 +2,10 @@
 
 namespace Tests\Wallabag\ApiBundle\Controller;
 
-use Tests\Wallabag\ApiBundle\WallabagApiTestCase;
+use Tests\Wallabag\ApiBundle\RssApiTestCase;
 use Wallabag\CoreBundle\Helper\PublicHttpClient;
 
-class XEntryRestControllerTest extends WallabagApiTestCase
+class XEntryRestControllerTest extends RssApiTestCase
 {
     public function testOrdinaryEntryApiCapturesPartialXContentAndDeduplicatesVariants(): void
     {

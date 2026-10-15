@@ -59,3 +59,8 @@ specialexport.json
 
 # Custom CSS file
 web/custom.css
+
+# Isolated local validation caches, synthetic databases and research responses
+/.validation/
+
+/docker/rss-tests/cache/
