@@ -157,12 +157,12 @@ class EntriesExport
          * Book metadata
          */
 
-        $book->setTitle($this->title);
+        $book->setTitle($this->escapeMetadata($this->title));
         // EPub specification requires BCP47-compliant languages, thus we replace _ with -
         $book->setLanguage(str_replace('_', '-', $this->language));
         $book->setDescription('Some articles saved on my wallabag');
 
-        $book->setAuthor($this->author, $this->author);
+        $book->setAuthor($this->escapeMetadata($this->author), $this->escapeMetadata($this->author));
 
         // I hope this is a non-existent address :)
         $book->setPublisher('wallabag', 'wallabag');
@@ -194,7 +194,7 @@ class EntriesExport
             }
 
             foreach ($entry->getTags() as $tag) {
-                $book->setSubject($tag->getLabel());
+                $book->setSubject($this->escapeMetadata($tag->getLabel()));
             }
             $filename = sha1(sprintf('%s:%s', $entry->getUrl(), $entry->getTitle()));
 
@@ -213,20 +213,20 @@ class EntriesExport
             $readingTime = $entry->getUserReadingTime();
 
             $titlepage = $content_start .
-                '<h1>' . $entry->getTitle() . '</h1>' .
+                '<h1>' . $this->escapeMetadata($entry->getTitle()) . '</h1>' .
                 '<dl>' .
-                '<dt>' . $this->translator->trans('entry.view.published_by') . '</dt><dd>' . $authors . '</dd>' .
+                '<dt>' . $this->translator->trans('entry.view.published_by') . '</dt><dd>' . $this->escapeMetadata($authors) . '</dd>' .
                 '<dt>' . $this->translator->trans('entry.metadata.published_on') . '</dt><dd>' . $publishedDate . '</dd>' .
                 '<dt>' . $this->translator->trans('entry.metadata.reading_time') . '</dt><dd>' . $this->translator->trans('entry.metadata.reading_time_minutes_short', ['%readingTime%' => $readingTime]) . '</dd>' .
                 '<dt>' . $this->translator->trans('entry.metadata.added_on') . '</dt><dd>' . $entry->getCreatedAt()->format('Y-m-d') . '</dd>' .
-                '<dt>' . $this->translator->trans('entry.metadata.address') . '</dt><dd><a href="' . $entry->getUrl() . '">' . $entry->getUrl() . '</a></dd>' .
+                '<dt>' . $this->translator->trans('entry.metadata.address') . '</dt><dd><a href="' . $this->escapeMetadata($entry->getUrl()) . '">' . $this->escapeMetadata($entry->getUrl()) . '</a></dd>' .
                 '</dl>' .
                 $bookEnd;
             $book->addChapter("Entry {$i} of {$entryCount}", "{$filename}_cover.html", $titlepage, true, EPub::EXTERNAL_REF_ADD);
             $chapter = $content_start . $entry->getContent() . $bookEnd;
 
             $entryIds[] = $entry->getId();
-            $book->addChapter($entry->getTitle(), "{$filename}.html", $chapter, true, EPub::EXTERNAL_REF_ADD);
+            $book->addChapter($this->escapeMetadata($entry->getTitle()), "{$filename}.html", $chapter, true, EPub::EXTERNAL_REF_ADD);
         }
 
         $book->addChapter('Notices', 'Cover2.html', $content_start . $this->getExportInformation('PHPePub') . $bookEnd);
@@ -260,7 +260,7 @@ class EntriesExport
         /*
          * Book metadata
          */
-        $content->set('title', $this->title);
+        $content->set('title', $this->escapeMetadata($this->title));
         $content->set('author', $this->author);
         $content->set('subject', $this->title);
 
@@ -277,11 +277,15 @@ class EntriesExport
          * Adding actual entries
          */
         foreach ($this->entries as $entry) {
-            $content->appendChapterTitle($entry->getTitle());
+            $content->appendChapterTitle($this->escapeMetadata($entry->getTitle()));
             $content->appendParagraph($entry->getContent());
             $content->appendPageBreak();
         }
         $mobi->setContentProvider($content);
+        // MOBI uses the title as both HTML and binary metadata; keep those contexts separate.
+        $metadata = $content->getMetaData();
+        $metadata['title'] = $this->title;
+        $mobi->setOptions($metadata);
 
         return Response::create(
             $mobi->toString(),
@@ -334,17 +338,17 @@ class EntriesExport
             $readingTime = $entry->getUserReadingTime();
 
             $pdf->addPage();
-            $html = '<h1>' . $entry->getTitle() . '</h1>' .
+            $html = '<h1>' . $this->escapeMetadata($entry->getTitle()) . '</h1>' .
                 '<dl>' .
-                '<dt>' . $this->translator->trans('entry.view.published_by') . '</dt><dd>' . $authors . '</dd>' .
+                '<dt>' . $this->translator->trans('entry.view.published_by') . '</dt><dd>' . $this->escapeMetadata($authors) . '</dd>' .
                 '<dt>' . $this->translator->trans('entry.metadata.reading_time') . '</dt><dd>' . $this->translator->trans('entry.metadata.reading_time_minutes_short', ['%readingTime%' => $readingTime]) . '</dd>' .
                 '<dt>' . $this->translator->trans('entry.metadata.added_on') . '</dt><dd>' . $entry->getCreatedAt()->format('Y-m-d') . '</dd>' .
-                '<dt>' . $this->translator->trans('entry.metadata.address') . '</dt><dd><a href="' . $entry->getUrl() . '">' . $entry->getUrl() . '</a></dd>' .
+                '<dt>' . $this->translator->trans('entry.metadata.address') . '</dt><dd><a href="' . $this->escapeMetadata($entry->getUrl()) . '">' . $this->escapeMetadata($entry->getUrl()) . '</a></dd>' .
                 '</dl>';
             $pdf->writeHTMLCell(0, 0, '', '', $html, 0, 1, 0, true, '', true);
 
             $pdf->AddPage();
-            $html = '<h1>' . $entry->getTitle() . '</h1>';
+            $html = '<h1>' . $this->escapeMetadata($entry->getTitle()) . '</h1>';
             $html .= $entry->getContent();
 
             $pdf->writeHTMLCell(0, 0, '', '', $html, 0, 1, 0, true, '', true);
@@ -517,6 +521,12 @@ class EntriesExport
         }
 
         return str_replace('%IMAGE%', '', $info);
+    }
+
+    /** Plain metadata becomes markup only at an HTML/XML export boundary. */
+    private function escapeMetadata($value): string
+    {
+        return htmlspecialchars((string) $value, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
     }
 
     /**
