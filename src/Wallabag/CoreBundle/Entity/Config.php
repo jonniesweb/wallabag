@@ -133,6 +133,42 @@ class Config
     private $xArticleReaderEnabled = false;
 
     /**
+     * @ORM\Column(name="x_grabber_enabled", type="boolean", options={"default" = true})
+     * @Groups({"config_api"})
+     */
+    private $xGrabberEnabled = true;
+
+    /**
+     * @ORM\Column(name="medium_grabber_enabled", type="boolean", options={"default" = true})
+     * @Groups({"config_api"})
+     */
+    private $mediumGrabberEnabled = true;
+
+    public function isXGrabberEnabled(): bool
+    {
+        return $this->xGrabberEnabled;
+    }
+
+    public function setXGrabberEnabled(bool $enabled): self
+    {
+        $this->xGrabberEnabled = $enabled;
+
+        return $this;
+    }
+
+    public function isMediumGrabberEnabled(): bool
+    {
+        return $this->mediumGrabberEnabled;
+    }
+
+    public function setMediumGrabberEnabled(bool $enabled): self
+    {
+        $this->mediumGrabberEnabled = $enabled;
+
+        return $this;
+    }
+
+    /**
      * @ORM\OneToOne(targetEntity="Wallabag\UserBundle\Entity\User", inversedBy="config")
      */
     private $user;

@@ -27,10 +27,12 @@ class ContentProxy
     protected $eventDispatcher;
     protected $storeArticleHeaders;
     private $xPostExtractor;
+    private $mediumExtractor;
 
-    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false, ?XPostExtractor $xPostExtractor = null)
+    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false, ?XPostExtractor $xPostExtractor = null, ?MediumExtractor $mediumExtractor = null)
     {
         $this->xPostExtractor = $xPostExtractor;
+        $this->mediumExtractor = $mediumExtractor;
         $this->graby = $graby;
         $this->tagger = $tagger;
         $this->ignoreOriginProcessor = $ignoreOriginProcessor;
@@ -51,9 +53,17 @@ class ContentProxy
      */
     public function updateEntry(Entry $entry, $url, array $content = [], $disableContentUpdate = false)
     {
-        if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url)) {
+        if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url) && (!$entry->getUser()->getConfig() || $entry->getUser()->getConfig()->isXGrabberEnabled())) {
             $config = $entry->getUser()->getConfig();
             $content = $this->xPostExtractor->extract($url, $config && $config->isXArticleReaderEnabled());
+            if (502 === $content['status'] && $entry->getContent()) {
+                $entry->setHttpStatus(502);
+
+                return;
+            }
+        }
+        if (!$disableContentUpdate && !$this->validateContent($content) && $this->mediumExtractor && SpecialGrabbers::mediumUrl($url) && $entry->getUser()->getConfig() && $entry->getUser()->getConfig()->isMediumGrabberEnabled()) {
+            $content = $this->mediumExtractor->extract($url);
             if (502 === $content['status'] && $entry->getContent()) {
                 $entry->setHttpStatus(502);
 
