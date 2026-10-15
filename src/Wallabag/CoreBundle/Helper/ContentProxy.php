@@ -26,9 +26,13 @@ class ContentProxy
     protected $fetchingErrorMessage;
     protected $eventDispatcher;
     protected $storeArticleHeaders;
+    private $xPostExtractor;
+    private $mediumExtractor;
 
-    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false)
+    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false, ?XPostExtractor $xPostExtractor = null, ?MediumExtractor $mediumExtractor = null)
     {
+        $this->xPostExtractor = $xPostExtractor;
+        $this->mediumExtractor = $mediumExtractor;
         $this->graby = $graby;
         $this->tagger = $tagger;
         $this->ignoreOriginProcessor = $ignoreOriginProcessor;
@@ -49,6 +53,27 @@ class ContentProxy
      */
     public function updateEntry(Entry $entry, $url, array $content = [], $disableContentUpdate = false)
     {
+        if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url) && (!$entry->getUser()->getConfig() || $entry->getUser()->getConfig()->isXGrabberEnabled())) {
+            $config = $entry->getUser()->getConfig();
+            $content = $this->xPostExtractor->extract($url, $config && $config->isXArticleReaderEnabled());
+            if ((502 === $content['status'] || (!empty($content['reader_failed']) && 'article' === $entry->getXCaptureType())) && $entry->getContent()) {
+                $entry->setHttpStatus(502);
+
+                return;
+            }
+        }
+        if (!$disableContentUpdate && !$this->validateContent($content) && $this->mediumExtractor && SpecialGrabbers::mediumUrl($url) && $entry->getUser()->getConfig() && $entry->getUser()->getConfig()->isMediumGrabberEnabled()) {
+            $content = $this->mediumExtractor->extract($url);
+            if (502 === $content['status'] && $entry->getContent()) {
+                $entry->setHttpStatus(502);
+
+                return;
+            }
+        }
+        // Duplicate saves reuse stored HTML; retain its provenance before cleanup normalizes it.
+        if (!\array_key_exists('x_capture_type', $content) && isset($content['html']) && $content['html'] === $entry->getContent()) {
+            $content['x_capture_type'] = $entry->getXCaptureType();
+        }
         $this->graby->toggleImgNoReferrer(true);
         if (!empty($content['html'])) {
             $content['html'] = $this->graby->cleanupHtml($content['html'], $url);
@@ -268,6 +293,7 @@ class ContentProxy
         }
 
         $entry->setContent($content['html']);
+        $entry->setXCaptureType($content['x_capture_type'] ?? null);
         $entry->setReadingTime(Utils::getReadingTime($content['html']));
 
         if (!empty($content['status'])) {

@@ -731,7 +731,7 @@ class EntryRestController extends WallabagRestController
                     'date' => !empty($data['publishedAt']) ? $data['publishedAt'] : $entry->getPublishedAt(),
                     // faking the open graph preview picture
                     'image' => !empty($data['picture']) ? $data['picture'] : $entry->getPreviewPicture(),
-                    'authors' => \is_string($data['authors']) ? explode(',', $data['authors']) : $entry->getPublishedBy(),
+                    'authors' => $request->request->has('authors') && \is_string($data['authors']) ? explode(',', $data['authors']) : $entry->getPublishedBy(),
                 ]
             );
         } catch (\Exception $e) {

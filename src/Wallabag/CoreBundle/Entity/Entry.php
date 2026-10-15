@@ -162,6 +162,14 @@ class Entry
     private $content;
 
     /**
+     * Capture provenance survives failed reloads independently of the last HTTP status.
+     *
+     * @ORM\Column(name="x_capture_type", type="string", length=16, nullable=true)
+     * @Exclude
+     */
+    private $xCaptureType;
+
+    /**
      * @var \DateTime
      *
      * @ORM\Column(name="created_at", type="datetime")
@@ -510,6 +518,18 @@ class Entry
     public function getContent()
     {
         return $this->content;
+    }
+
+    public function getXCaptureType(): ?string
+    {
+        return $this->xCaptureType;
+    }
+
+    public function setXCaptureType(?string $type): self
+    {
+        $this->xCaptureType = $type;
+
+        return $this;
     }
 
     /**

@@ -290,7 +290,7 @@
                         <li>
                             <i class="material-icons grey-text" title="{{ 'entry.view.published_by'|trans }}">person</i>
                             {% for author in entry.publishedBy %}
-                                {{ author|raw }}{% if not loop.last %}, {% endif %}
+                                {{ author|e }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
                         </li>
                     {% endif %}
@@ -324,6 +324,9 @@
 
         </aside>
         <article{% if entry.language is defined and entry.language is not null %} lang="{{ entry.getHTMLLanguage() }}"{% endif %}>
+            {% if entry.httpStatus == 502 and entry.domainName in ['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com'] %}
+                <p role="status"><strong>The latest X capture failed.</strong> Any previous snapshot below has been retained. Open the original or retry later.</p>
+            {% endif %}
             {{ entry.content|raw }}
         </article>
 
