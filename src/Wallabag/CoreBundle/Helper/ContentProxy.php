@@ -17,6 +17,7 @@ use Wallabag\CoreBundle\Tools\Utils;
  */
 class ContentProxy
 {
+    private $xPostExtractor;
     protected $graby;
     protected $tagger;
     protected $ignoreOriginProcessor;
@@ -27,8 +28,9 @@ class ContentProxy
     protected $eventDispatcher;
     protected $storeArticleHeaders;
 
-    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false)
+    public function __construct(Graby $graby, RuleBasedTagger $tagger, RuleBasedIgnoreOriginProcessor $ignoreOriginProcessor, ValidatorInterface $validator, LoggerInterface $logger, $fetchingErrorMessage, $storeArticleHeaders = false, ?XPostExtractor $xPostExtractor = null)
     {
+        $this->xPostExtractor = $xPostExtractor;
         $this->graby = $graby;
         $this->tagger = $tagger;
         $this->ignoreOriginProcessor = $ignoreOriginProcessor;
@@ -49,6 +51,13 @@ class ContentProxy
      */
     public function updateEntry(Entry $entry, $url, array $content = [], $disableContentUpdate = false)
     {
+        if (!$disableContentUpdate && !$this->validateContent($content) && $this->xPostExtractor && XPostExtractor::canonicalUrl($url)) {
+            $content = $this->xPostExtractor->extract($url);
+            if (502 === $content['status'] && $entry->getContent()) {
+                $entry->setHttpStatus(502);
+                return;
+            }
+        }
         $this->graby->toggleImgNoReferrer(true);
         if (!empty($content['html'])) {
             $content['html'] = $this->graby->cleanupHtml($content['html'], $url);
