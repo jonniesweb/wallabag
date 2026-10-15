@@ -64,3 +64,6 @@ web/custom.css
 /.validation/
 
 /docker/rss-tests/cache/
+
+# Python operator/test helpers
+__pycache__/
