@@ -54,6 +54,173 @@ class DownloadImages
     }
 
     /**
+     * Resolve image URLs in extracted article HTML and remove blocked-image placeholders.
+     */
+    public static function normalizeImageSources(string $html, string $sourceUrl): string
+    {
+        $document = new \DOMDocument('1.0', 'UTF-8');
+        $previousLibxmlState = libxml_use_internal_errors(true);
+        $loaded = false;
+
+        try {
+            $loaded = $document->loadHTML(
+                '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><div id="wallabag-article-root">' . $html . '</div></body></html>',
+                \LIBXML_NONET | \LIBXML_HTML_NODEFDTD
+            );
+        } catch (\Throwable) {
+            // Keep the original HTML if libxml cannot parse a malformed fragment.
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousLibxmlState);
+        }
+
+        if (!$loaded) {
+            return $html;
+        }
+
+        $root = (new \DOMXPath($document))->query('//*[@id="wallabag-article-root"]')->item(0);
+        if (!$root instanceof \DOMElement) {
+            return $html;
+        }
+
+        $images = [];
+        foreach ($root->getElementsByTagName('img') as $image) {
+            $images[] = $image;
+        }
+
+        $changed = false;
+        foreach ($images as $image) {
+            $src = trim($image->getAttribute('src'));
+            $srcset = self::normalizeSrcset($image->getAttribute('srcset'), $sourceUrl);
+            $isDeniedSource = 1 === preg_match('/^denied:/i', $src);
+
+            if ($isDeniedSource && [] === $srcset) {
+                $image->parentNode?->removeChild($image);
+                $changed = true;
+
+                continue;
+            }
+
+            if ('' !== $src && !$isDeniedSource) {
+                $absoluteSrc = self::makeAbsoluteImageUrl($sourceUrl, $src);
+                if ($absoluteSrc !== $src) {
+                    $image->setAttribute('src', $absoluteSrc);
+                    $changed = true;
+                }
+            } elseif ([] !== $srcset) {
+                $image->setAttribute('src', $srcset[0]['url']);
+                $changed = true;
+            }
+
+            if ([] !== $srcset) {
+                $absoluteSrcset = implode(', ', array_map(static function (array $candidate): string {
+                    return $candidate['url'] . ('' !== $candidate['descriptor'] ? ' ' . $candidate['descriptor'] : '');
+                }, $srcset));
+
+                if ($absoluteSrcset !== $image->getAttribute('srcset')) {
+                    $image->setAttribute('srcset', $absoluteSrcset);
+                    $changed = true;
+                }
+            } elseif ($image->hasAttribute('srcset')) {
+                $image->removeAttribute('srcset');
+                $changed = true;
+            }
+        }
+
+        if (!$changed) {
+            return $html;
+        }
+
+        $normalizedHtml = '';
+        foreach ($root->childNodes as $child) {
+            $normalizedHtml .= $document->saveHTML($child);
+        }
+
+        return $normalizedHtml;
+    }
+
+    /**
+     * @return array<int, array{url: string, descriptor: string}>
+     */
+    private static function normalizeSrcset(string $srcset, string $sourceUrl): array
+    {
+        $candidates = [];
+        $length = \strlen($srcset);
+        $position = 0;
+
+        while ($position < $length) {
+            while ($position < $length && (',' === $srcset[$position] || ctype_space($srcset[$position]))) {
+                ++$position;
+            }
+
+            if ($position >= $length) {
+                break;
+            }
+
+            $urlStart = $position;
+            while ($position < $length && !ctype_space($srcset[$position])) {
+                ++$position;
+            }
+
+            $candidateUrl = substr($srcset, $urlStart, $position - $urlStart);
+            $endsWithComma = str_ends_with($candidateUrl, ',');
+            while (str_ends_with($candidateUrl, ',')) {
+                $candidateUrl = substr($candidateUrl, 0, -1);
+            }
+
+            if ('' === $candidateUrl) {
+                continue;
+            }
+
+            $descriptor = '';
+            if (!$endsWithComma) {
+                while ($position < $length && ctype_space($srcset[$position])) {
+                    ++$position;
+                }
+
+                $descriptorStart = $position;
+                while ($position < $length && ',' !== $srcset[$position]) {
+                    ++$position;
+                }
+                $descriptor = trim(substr($srcset, $descriptorStart, $position - $descriptorStart));
+
+                if ($position < $length && ',' === $srcset[$position]) {
+                    ++$position;
+                }
+            }
+
+            if (1 === preg_match('/^denied:/i', $candidateUrl)) {
+                continue;
+            }
+
+            $candidates[] = [
+                'url' => self::makeAbsoluteImageUrl($sourceUrl, $candidateUrl),
+                'descriptor' => $descriptor,
+            ];
+        }
+
+        return $candidates;
+    }
+
+    private static function makeAbsoluteImageUrl(string $sourceUrl, string $imageUrl): string
+    {
+        if ('' === $imageUrl || 1 === preg_match('/^[a-z][a-z0-9+.-]*:/i', $imageUrl)) {
+            return $imageUrl;
+        }
+
+        try {
+            $base = new Uri($sourceUrl);
+            if ('' === $base->getScheme() || '' === $base->getAuthority()) {
+                return $imageUrl;
+            }
+
+            return (string) UriResolver::resolve($base, new Uri($imageUrl));
+        } catch (\Throwable) {
+            return $imageUrl;
+        }
+    }
+
+    /**
      * Process the html and extract image from it, save them to local and return the updated html.
      *
      * @param int    $entryId ID of the entry

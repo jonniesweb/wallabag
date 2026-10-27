@@ -66,6 +66,7 @@ class ContentProxy
                 return;
             }
         }
+        $hasPrefetchedHtml = !empty($content['html']);
         // Duplicate saves reuse stored HTML; retain its provenance before cleanup normalizes it.
         if (!\array_key_exists('x_capture_type', $content) && isset($content['html']) && $content['html'] === $entry->getContent()) {
             $content['x_capture_type'] = $entry->getXCaptureType();
@@ -77,7 +78,26 @@ class ContentProxy
         }
 
         if (false === $disableContentUpdate) {
-            $fetchedContent = array_filter($this->graby->fetchContent($url), static function ($value, $key) {
+            $fetchedContent = $this->graby->fetchContent($url);
+            if (!$hasPrefetchedHtml
+                && 200 === ($fetchedContent['status'] ?? null)
+                && ($fetchedContent['html'] ?? null) === $this->fetchingErrorMessage
+            ) {
+                $this->logger->warning('Graby returned no article for an HTTP 200 response; retrying extraction once.');
+                $retryContent = $this->graby->fetchContent($url);
+                $retryHtml = $retryContent['html'] ?? null;
+                if (!empty($retryHtml) && $retryHtml !== $this->fetchingErrorMessage) {
+                    $fetchedContent = $retryContent;
+                } else {
+                    $this->logger->error('Graby still returned no article after retry.', [
+                        'host' => parse_url($url, \PHP_URL_HOST),
+                        'url_hash' => substr(hash('sha256', $url), 0, 12),
+                        'status' => $retryContent['status'] ?? null,
+                    ]);
+                }
+            }
+
+            $fetchedContent = array_filter($fetchedContent, static function ($value, $key) {
                 if ('html' === $key) {
                     return true;
                 }
@@ -112,6 +132,10 @@ class ContentProxy
         }
 
         $entry->setGivenUrl($url);
+
+        if (!empty($content['html'])) {
+            $content['html'] = DownloadImages::normalizeImageSources($content['html'], $content['url'] ?? $url);
+        }
 
         $this->stockEntry($entry, $content);
     }
