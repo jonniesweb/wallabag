@@ -189,6 +189,59 @@ class ContentProxyTest extends TestCase
         $this->assertFalse($entry->isNotParsed());
     }
 
+    /**
+     * @dataProvider emptyProvidedContent
+     */
+    public function testEmptyProvidedFieldsDoNotOverwriteFetchedContent($empty): void
+    {
+        $url = 'https://example.com/article';
+        $graby = $this->getMockBuilder(Graby::class)
+            ->onlyMethods(['fetchContent'])
+            ->disableOriginalConstructor()
+            ->getMock();
+        $graby->expects($this->once())->method('fetchContent')->with($url)->willReturn([
+            'html' => '<p>Fetched article content.</p>',
+            'title' => 'Fetched title',
+            'url' => $url,
+            'language' => 'en',
+            'date' => '2026-11-02T12:00:02+00:00',
+            'authors' => ['Article author'],
+            'image' => 'https://example.com/cover.jpg',
+            'headers' => ['content-type' => 'text/html'],
+            'status' => 200,
+        ]);
+        $proxy = new ContentProxy($graby, $this->getTaggerMock(), $this->getRuleBasedIgnoreOriginProcessorMock(), $this->getValidator(), $this->getLogger(), $this->fetchingErrorMessage);
+        $entry = new Entry(new User());
+        $entry->setNotParsed(true);
+
+        $proxy->updateEntry($entry, $url, [
+            'title' => $empty,
+            'html' => $empty,
+            'url' => $url,
+            'language' => $empty,
+            'date' => '',
+            'image' => $empty,
+            'authors' => [],
+            'headers' => [],
+            'x_capture_type' => null,
+        ]);
+
+        $this->assertSame('Fetched title', $entry->getTitle());
+        $this->assertSame('<p>Fetched article content.</p>', $entry->getContent());
+        $this->assertSame('en', $entry->getLanguage());
+        $this->assertSame('2026-11-02T12:00:02+00:00', $entry->getPublishedAt()->format(\DATE_ATOM));
+        $this->assertSame(['Article author'], $entry->getPublishedBy());
+        $this->assertSame('https://example.com/cover.jpg', $entry->getPreviewPicture());
+        $this->assertSame('text/html', $entry->getMimetype());
+        $this->assertNull($entry->getXCaptureType());
+        $this->assertFalse($entry->isNotParsed());
+    }
+
+    public static function emptyProvidedContent(): array
+    {
+        return ['null fields' => [null], 'blank fields' => ['']];
+    }
+
     public function testWithContentAndNoOgImage(): void
     {
         $tagger = $this->getTaggerMock();

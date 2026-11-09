@@ -17,10 +17,10 @@ use Wallabag\Tools\Utils;
  */
 class ContentProxy
 {
-    private ?XPostExtractor $xPostExtractor;
-    private ?MediumExtractor $mediumExtractor;
     protected $mimeTypes;
     protected $eventDispatcher;
+    private ?XPostExtractor $xPostExtractor;
+    private ?MediumExtractor $mediumExtractor;
 
     public function __construct(
         protected Graby $graby,
@@ -116,7 +116,12 @@ class ContentProxy
             // when content is imported, we have information in $content
             // in case fetching content goes bad, we'll keep the imported information instead of overriding them
             if ($fetchedContent['html'] !== $this->fetchingErrorMessage) {
-                $content = array_merge($fetchedContent, $content);
+                // API callers include empty optional fields; only supplied values override the fetch.
+                // A null capture type explicitly clears provenance and must be retained.
+                $providedContent = array_filter($content, static function ($value, $key) {
+                    return 'x_capture_type' === $key || (null !== $value && '' !== $value && [] !== $value);
+                }, \ARRAY_FILTER_USE_BOTH);
+                $content = array_merge($fetchedContent, $providedContent);
             }
         }
 
@@ -138,14 +143,6 @@ class ContentProxy
         }
 
         $this->stockEntry($entry, $content);
-    }
-
-    /**
-     * Check whether imported content includes the fields required to skip a source-specific grabber.
-     */
-    private function validateContent(array $content): bool
-    {
-        return !empty($content['title']) && !empty($content['html']) && !empty($content['url']);
     }
 
     /**
@@ -251,6 +248,14 @@ class ContentProxy
     }
 
     /**
+     * Check whether imported content includes the fields required to skip a source-specific grabber.
+     */
+    private function validateContent(array $content): bool
+    {
+        return !empty($content['title']) && !empty($content['html']) && !empty($content['url']);
+    }
+
+    /**
      * Try to sanitize the title of the fetched content from wrong character encodings and invalid UTF-8 character.
      *
      * @param string $title
@@ -328,6 +333,8 @@ class ContentProxy
                 $content['html'] .= '<p><i>But we found a short description: </i></p>';
                 $content['html'] .= $content['description'];
             }
+        } else {
+            $entry->setNotParsed($this->fetchingErrorMessage === $content['html']);
         }
 
         $entry->setContent($content['html']);
