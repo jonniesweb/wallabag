@@ -62,7 +62,6 @@ RUN set -eux; \
     test "$(php -r 'echo PHP_VERSION;')" = "$PHP_VERSION"; \
     php -r '$loaded = array_map("strtolower", get_loaded_extensions()); $required = ["curl", "dom", "gd", "intl", "mbstring", "pdo_mysql", "simplexml", "tidy", "xml", "xmlreader", "xmlwriter", "zip"]; $missing = array_diff($required, $loaded); if ($missing) { fwrite(STDERR, "Missing PHP extensions: ".implode(", ", $missing)."\n"); exit(1); }'; \
     composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts --classmap-authoritative; \
-    php docker/production/patch-hoa-compiler-null-node-id.php; \
     test -s vendor/autoload_runtime.php; \
     composer check-platform-reqs --no-dev; \
     mkdir -p data var/cache var/logs var/sessions web/assets/images; \

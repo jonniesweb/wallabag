@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b485a39461867ef27b5c5ad8bee664ed",
+    "content-hash": "a5669b2384d4eb988e679d5e6bf5f672",
     "packages": [
         {
             "name": "babdev/pagerfanta-bundle",
@@ -3079,17 +3079,17 @@
             "time": "2026-08-24T09:13:11+00:00"
         },
         {
-            "name": "hoa/compiler",
-            "version": "3.17.08.08",
+            "name": "hiqdev/hoa-compiler",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/hoaproject/Compiler.git",
-                "reference": "aa09caf0bf28adae6654ca6ee415ee2f522672de"
+                "url": "https://github.com/hiqdev/hoa-compiler.git",
+                "reference": "da67c74e9bf4ba395d8d87e6eee7332331b4a5fe"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/hoaproject/Compiler/zipball/aa09caf0bf28adae6654ca6ee415ee2f522672de",
-                "reference": "aa09caf0bf28adae6654ca6ee415ee2f522672de",
+                "url": "https://api.github.com/repos/hiqdev/hoa-compiler/zipball/da67c74e9bf4ba395d8d87e6eee7332331b4a5fe",
+                "reference": "da67c74e9bf4ba395d8d87e6eee7332331b4a5fe",
                 "shasum": ""
             },
             "require": {
@@ -3100,18 +3100,18 @@
                 "hoa/math": "~1.0",
                 "hoa/protocol": "~1.0",
                 "hoa/regex": "~1.0",
-                "hoa/visitor": "~2.0"
+                "hoa/visitor": "~2.0",
+                "php": ">=7.4"
+            },
+            "replace": {
+                "hoa/compiler": "~3.0"
             },
             "require-dev": {
                 "hoa/json": "~2.0",
-                "hoa/test": "~2.0"
+                "hoa/test": "~2.0",
+                "phpunit/phpunit": "^9.5"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "3.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Hoa\\Compiler\\": "."
@@ -3121,18 +3121,7 @@
             "license": [
                 "BSD-3-Clause"
             ],
-            "authors": [
-                {
-                    "name": "Ivan Enderlin",
-                    "email": "ivan.enderlin@hoa-project.net"
-                },
-                {
-                    "name": "Hoa community",
-                    "homepage": "https://hoa-project.net/"
-                }
-            ],
-            "description": "The Hoa\\Compiler library.",
-            "homepage": "https://hoa-project.net/",
+            "description": "The Hiqdev Hoa\\Compiler library.",
             "keywords": [
                 "algebraic",
                 "ast",
@@ -3159,15 +3148,9 @@
                 "uniform"
             ],
             "support": {
-                "docs": "https://central.hoa-project.net/Documentation/Library/Compiler",
-                "email": "support@hoa-project.net",
-                "forum": "https://users.hoa-project.net/",
-                "irc": "irc://chat.freenode.net/hoaproject",
-                "issues": "https://github.com/hoaproject/Compiler/issues",
-                "source": "https://central.hoa-project.net/Resource/Library/Compiler"
+                "source": "https://github.com/hiqdev/hoa-compiler/tree/1.0.1"
             },
-            "abandoned": true,
-            "time": "2017-08-08T07:44:07+00:00"
+            "time": "2022-07-07T14:51:09+00:00"
         },
         {
             "name": "hoa/consistency",

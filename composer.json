@@ -83,6 +83,7 @@
         "friendsofsymfony/user-bundle": "^3.4.0",
         "gregwar/captcha-bundle": "^2.2",
         "guzzlehttp/psr7": "^2.7.0",
+        "hiqdev/hoa-compiler": "^1.0.1",
         "html2text/html2text": "^4.3.2",
         "j0k3r/graby": "^2.4.6",
         "j0k3r/graby-site-config": "^1.0.197",
